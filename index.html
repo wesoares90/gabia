@@ -266,7 +266,7 @@
   <main class="app">
     <header class="header">
       <div class="title">Foto do Casamento</div>
-      <div class="subtitle">Sem zoom na câmera, com ajuste do filtro</div>
+      <div class="subtitle">Foto final em 1080 x 1920, sem zoom na câmera</div>
     </header>
 
     <section class="camera-shell">
@@ -335,7 +335,7 @@
       </div>
 
       <div class="hint">
-        A prévia e a foto final usam a mesma lógica sem zoom. Se no iPhone o download não iniciar sozinho, a imagem pode abrir em outra aba para salvar manualmente.
+        A foto final é exportada em 1080 x 1920. Como a câmera está sem zoom, podem aparecer bordas pretas dependendo da proporção nativa do aparelho.
       </div>
     </section>
 
@@ -602,16 +602,16 @@
         drawContainImage(
           ctx,
           video,
-          canvas.width,
-          canvas.height,
+          CONFIG.outputWidth,
+          CONFIG.outputHeight,
           CONFIG.mirrorFrontCameraCapture && isFrontCamera()
         );
 
         drawAdjustedOverlayContain(
           ctx,
           overlay,
-          canvas.width,
-          canvas.height,
+          CONFIG.outputWidth,
+          CONFIG.outputHeight,
           overlayState.scale,
           overlayState.offsetX,
           overlayState.offsetY
