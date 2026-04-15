@@ -7,15 +7,13 @@
 
   <style>
     :root {
-      --bg: #000000;
-      --panel: rgba(255, 255, 255, 0.14);
+      --bg: #0f0f10;
+      --panel: rgba(255, 255, 255, 0.08);
       --text: #ffffff;
-      --muted: rgba(255, 255, 255, 0.8);
+      --muted: rgba(255, 255, 255, 0.75);
+      --radius: 18px;
       --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-      --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --safe-left: env(safe-area-inset-left, 0px);
-      --safe-right: env(safe-area-inset-right, 0px);
     }
 
     * {
@@ -26,35 +24,58 @@
     html, body {
       margin: 0;
       padding: 0;
-      width: 100%;
-      height: 100%;
-      background: #000;
-      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
       font-family: Inter, system-ui, Arial, sans-serif;
+      min-height: 100%;
     }
 
     body {
-      color: var(--text);
+      min-height: 100vh;
     }
 
     .app {
-      position: relative;
-      width: 100vw;
-      height: 100dvh;
-      background: #000;
-      overflow: hidden;
+      width: 100%;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto auto auto auto auto;
+      gap: 14px;
+      padding: 14px 14px calc(14px + var(--safe-bottom));
+      max-width: 480px;
+      margin: 0 auto;
     }
 
-    .stage {
-      position: absolute;
-      inset: 0;
-      background: #000;
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 4px 2px 0;
+    }
+
+    .title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .camera-shell {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      border-radius: 24px;
       overflow: hidden;
+      background: #000;
+      box-shadow: var(--shadow);
     }
 
     .video,
-    .overlay,
-    .preview-image,
+    .overlay-stage,
+    .overlay-image,
     .capture-flash {
       position: absolute;
       inset: 0;
@@ -62,14 +83,9 @@
       height: 100%;
     }
 
-    .video,
-    .overlay,
-    .preview-image {
-      object-fit: cover;
-      background: #000;
-    }
-
     .video {
+      object-fit: contain;
+      background: #000;
       transform-origin: center center;
     }
 
@@ -77,9 +93,17 @@
       transform: scaleX(-1);
     }
 
-    .overlay {
+    .overlay-stage {
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .overlay-image {
+      object-fit: contain;
       pointer-events: none;
       user-select: none;
+      transform-origin: center center;
+      will-change: transform;
     }
 
     .capture-flash {
@@ -87,85 +111,41 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 140ms ease;
-      z-index: 6;
     }
 
     .capture-flash.active {
       opacity: 0.85;
     }
 
-    .top-ui {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 10;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding:
-        calc(14px + var(--safe-top))
-        calc(14px + var(--safe-right))
-        14px
-        calc(14px + var(--safe-left));
-      pointer-events: none;
-    }
-
-    .header-card,
     .badge {
-      pointer-events: auto;
-      background: rgba(0, 0, 0, 0.35);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border-radius: 18px;
-      box-shadow: var(--shadow);
-    }
-
-    .header-card {
-      padding: 12px 14px;
-      max-width: min(78vw, 340px);
-    }
-
-    .title {
-      font-size: 1rem;
-      font-weight: 700;
-      line-height: 1.2;
-      margin-bottom: 4px;
-    }
-
-    .subtitle {
-      font-size: 0.84rem;
-      color: var(--muted);
-      line-height: 1.3;
-    }
-
-    .badge {
-      padding: 10px 12px;
-      font-size: 0.84rem;
-      white-space: nowrap;
-      margin-left: 12px;
-    }
-
-    .bottom-ui {
       position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 10;
-      padding:
-        14px
-        calc(14px + var(--safe-right))
-        calc(20px + var(--safe-bottom))
-        calc(14px + var(--safe-left));
-      display: flex;
-      justify-content: center;
+      top: 12px;
+      left: 12px;
+      z-index: 5;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(8px);
+      font-size: 0.85rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      gap: 16px;
-      pointer-events: none;
+      gap: 12px;
+      padding-top: 4px;
     }
 
-    .bottom-ui > * {
-      pointer-events: auto;
+    .left-actions,
+    .right-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .right-actions {
+      justify-content: flex-end;
     }
 
     button {
@@ -178,7 +158,6 @@
       font-weight: 600;
       cursor: pointer;
       backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
     }
 
     button:disabled {
@@ -187,14 +166,13 @@
     }
 
     .capture-btn {
-      width: 86px;
-      height: 86px;
+      width: 82px;
+      height: 82px;
       border-radius: 50%;
       padding: 0;
       background: #fff;
       position: relative;
       box-shadow: var(--shadow);
-      flex: 0 0 auto;
     }
 
     .capture-btn::after {
@@ -206,54 +184,74 @@
     }
 
     .secondary {
-      min-width: 120px;
+      min-width: 110px;
     }
 
-    .preview-screen {
-      position: absolute;
-      inset: 0;
-      z-index: 20;
-      background: #000;
-      display: none;
+    .adjust-panel {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: var(--radius);
     }
 
-    .preview-screen.show {
-      display: block;
-    }
-
-    .preview-top {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 22;
-      display: flex;
-      justify-content: space-between;
+    .adjust-row {
+      display: grid;
+      grid-template-columns: 92px 1fr 58px;
+      gap: 10px;
       align-items: center;
-      padding:
-        calc(14px + var(--safe-top))
-        calc(14px + var(--safe-right))
-        14px
-        calc(14px + var(--safe-left));
     }
 
-    .preview-bottom {
-      position: absolute;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 22;
+    .adjust-row label {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .adjust-row input[type="range"] {
+      width: 100%;
+    }
+
+    .adjust-value {
+      font-size: 0.88rem;
+      text-align: right;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .adjust-actions,
+    .result-actions {
       display: flex;
-      justify-content: center;
-      padding:
-        14px
-        calc(14px + var(--safe-right))
-        calc(20px + var(--safe-bottom))
-        calc(14px + var(--safe-left));
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
-    .hidden {
-      display: none !important;
+    .result {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: var(--radius);
+    }
+
+    .result.show {
+      display: flex;
+    }
+
+    .result img {
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      object-fit: contain;
+      border-radius: 16px;
+      display: block;
+      background: #111;
+    }
+
+    .hint {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.4;
     }
 
     canvas {
@@ -263,43 +261,78 @@
 </head>
 <body>
   <main class="app">
-    <section class="stage">
-      <video id="video" class="video" autoplay muted playsinline></video>
+    <header class="header">
+      <div class="title">Foto do Casamento</div>
+      <div class="subtitle">Ajuste o filtro, tire a foto e baixe</div>
+    </header>
 
-      <img
-        id="overlay"
-        class="overlay"
-        src="./filtro.png"
-        alt="Filtro do casamento"
-      />
+    <section class="camera-shell">
+      <div class="badge" id="statusBadge">Câmera desligada</div>
+
+      <video
+        id="video"
+        class="video"
+        autoplay
+        muted
+        playsinline
+      ></video>
+
+      <div class="overlay-stage">
+        <img
+          id="overlay"
+          class="overlay-image"
+          src="./filtro.png"
+          alt="Template do casamento"
+        />
+      </div>
 
       <div id="flash" class="capture-flash"></div>
     </section>
 
-    <section class="top-ui" id="liveTopUi">
-      <div class="header-card">
-        <div class="title">Foto do Casamento</div>
-        <div class="subtitle">Enquadramento em tela cheia no padrão Story</div>
+    <section class="controls">
+      <div class="left-actions">
+        <button id="switchBtn" class="secondary" type="button">Trocar câmera</button>
       </div>
 
-      <div class="badge" id="statusBadge">Câmera desligada</div>
-    </section>
-
-    <section class="bottom-ui" id="liveBottomUi">
-      <button id="switchBtn" class="secondary" type="button">Trocar câmera</button>
       <button id="captureBtn" class="capture-btn" aria-label="Capturar foto"></button>
-      <div style="width:120px;"></div>
+
+      <div class="right-actions"></div>
     </section>
 
-    <section id="previewScreen" class="preview-screen">
-      <img id="previewImage" class="preview-image" alt="Foto final com filtro" />
-
-      <div class="preview-top">
-        <div class="badge">Foto tirada</div>
+    <section class="adjust-panel">
+      <div class="adjust-row">
+        <label for="scaleRange">Zoom filtro</label>
+        <input id="scaleRange" type="range" min="70" max="140" step="1" value="100" />
+        <div id="scaleValue" class="adjust-value">100%</div>
       </div>
 
-      <div class="preview-bottom">
+      <div class="adjust-row">
+        <label for="offsetXRange">Horizontal</label>
+        <input id="offsetXRange" type="range" min="-30" max="30" step="0.5" value="0" />
+        <div id="offsetXValue" class="adjust-value">0%</div>
+      </div>
+
+      <div class="adjust-row">
+        <label for="offsetYRange">Vertical</label>
+        <input id="offsetYRange" type="range" min="-30" max="30" step="0.5" value="0" />
+        <div id="offsetYValue" class="adjust-value">0%</div>
+      </div>
+
+      <div class="adjust-actions">
+        <button id="resetAdjustBtn" type="button">Resetar filtro</button>
+      </div>
+    </section>
+
+    <section id="result" class="result">
+      <img id="resultImage" alt="Foto capturada com filtro" />
+
+      <div class="result-actions">
+        <button id="retakeBtn" class="secondary" type="button">Tirar outra</button>
         <button id="saveBtn" class="secondary" disabled>Baixar</button>
+      </div>
+
+      <div class="hint">
+        Se no iPhone o download não iniciar sozinho, a imagem abre em outra aba para salvar manualmente.
       </div>
     </section>
 
@@ -321,23 +354,37 @@
 
     const video = document.getElementById("video");
     const overlay = document.getElementById("overlay");
-    const flash = document.getElementById("flash");
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
-    const statusBadge = document.getElementById("statusBadge");
     const switchBtn = document.getElementById("switchBtn");
     const captureBtn = document.getElementById("captureBtn");
     const saveBtn = document.getElementById("saveBtn");
+    const retakeBtn = document.getElementById("retakeBtn");
 
-    const previewScreen = document.getElementById("previewScreen");
-    const previewImage = document.getElementById("previewImage");
-    const liveTopUi = document.getElementById("liveTopUi");
-    const liveBottomUi = document.getElementById("liveBottomUi");
+    const result = document.getElementById("result");
+    const resultImage = document.getElementById("resultImage");
+    const statusBadge = document.getElementById("statusBadge");
+    const flash = document.getElementById("flash");
+
+    const scaleRange = document.getElementById("scaleRange");
+    const offsetXRange = document.getElementById("offsetXRange");
+    const offsetYRange = document.getElementById("offsetYRange");
+
+    const scaleValue = document.getElementById("scaleValue");
+    const offsetXValue = document.getElementById("offsetXValue");
+    const offsetYValue = document.getElementById("offsetYValue");
+    const resetAdjustBtn = document.getElementById("resetAdjustBtn");
 
     let stream = null;
     let currentFacingMode = CONFIG.preferredFacingMode;
     let lastBlobUrl = null;
+
+    const overlayState = {
+      scale: 1,
+      offsetX: 0,
+      offsetY: 0
+    };
 
     overlay.src = CONFIG.templateUrl;
 
@@ -352,6 +399,29 @@
     function updateVideoMirror() {
       const shouldMirror = CONFIG.mirrorFrontCameraPreview && isFrontCamera();
       video.classList.toggle("mirror", shouldMirror);
+    }
+
+    function updateOverlayPreview() {
+      overlay.style.transform =
+        `translate(${overlayState.offsetX}%, ${overlayState.offsetY}%) scale(${overlayState.scale})`;
+
+      scaleValue.textContent = `${Math.round(overlayState.scale * 100)}%`;
+      offsetXValue.textContent = `${overlayState.offsetX.toFixed(1)}%`;
+      offsetYValue.textContent = `${overlayState.offsetY.toFixed(1)}%`;
+    }
+
+    function syncAdjustmentsFromInputs() {
+      overlayState.scale = Number(scaleRange.value) / 100;
+      overlayState.offsetX = Number(offsetXRange.value);
+      overlayState.offsetY = Number(offsetYRange.value);
+      updateOverlayPreview();
+    }
+
+    function resetAdjustments() {
+      scaleRange.value = 100;
+      offsetXRange.value = 0;
+      offsetYRange.value = 0;
+      syncAdjustmentsFromInputs();
     }
 
     async function stopCamera() {
@@ -375,12 +445,12 @@
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
             video: {
-              facingMode: currentFacingMode,
+              facingMode: { ideal: currentFacingMode },
               width: { ideal: 1080 },
               height: { ideal: 1920 }
             }
           });
-        } catch (err) {
+        } catch (e) {
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
             video: true
@@ -427,12 +497,12 @@
       setTimeout(() => flash.classList.remove("active"), 140);
     }
 
-    function drawCoverImage(ctx, img, destW, destH, mirror = false) {
+    function drawContainImage(ctx, img, destW, destH, mirror = false) {
       const srcW = img.videoWidth || img.naturalWidth || img.width;
       const srcH = img.videoHeight || img.naturalHeight || img.height;
 
       if (!srcW || !srcH) {
-        throw new Error("Imagem/vídeo ainda não está pronta para desenhar.");
+        throw new Error("Imagem/vídeo ainda não está pronto para desenhar.");
       }
 
       const srcRatio = srcW / srcH;
@@ -441,15 +511,15 @@
       let drawW, drawH, offsetX, offsetY;
 
       if (srcRatio > destRatio) {
-        drawH = destH;
-        drawW = destH * srcRatio;
-        offsetX = (destW - drawW) / 2;
-        offsetY = 0;
-      } else {
         drawW = destW;
         drawH = destW / srcRatio;
         offsetX = 0;
         offsetY = (destH - drawH) / 2;
+      } else {
+        drawH = destH;
+        drawW = destH * srcRatio;
+        offsetX = (destW - drawW) / 2;
+        offsetY = 0;
       }
 
       if (mirror) {
@@ -463,6 +533,36 @@
       }
     }
 
+    function drawAdjustedOverlayContain(ctx, img, destW, destH, scale, offsetXPercent, offsetYPercent) {
+      const srcW = img.naturalWidth || img.width;
+      const srcH = img.naturalHeight || img.height;
+
+      if (!srcW || !srcH) {
+        throw new Error("Filtro ainda não está pronto para desenhar.");
+      }
+
+      const srcRatio = srcW / srcH;
+      const destRatio = destW / destH;
+
+      let baseW, baseH;
+
+      if (srcRatio > destRatio) {
+        baseW = destW;
+        baseH = destW / srcRatio;
+      } else {
+        baseH = destH;
+        baseW = destH * srcRatio;
+      }
+
+      const drawW = baseW * scale;
+      const drawH = baseH * scale;
+
+      const x = (destW - drawW) / 2 + (destW * offsetXPercent / 100);
+      const y = (destH - drawH) / 2 + (destH * offsetYPercent / 100);
+
+      ctx.drawImage(img, x, y, drawW, drawH);
+    }
+
     async function ensureOverlayLoaded() {
       if (overlay.complete && overlay.naturalWidth > 0) return;
 
@@ -470,13 +570,6 @@
         overlay.onload = () => resolve();
         overlay.onerror = () => reject(new Error("Falha ao carregar filtro.png"));
       });
-    }
-
-    function showPreview(blobUrl) {
-      previewImage.src = blobUrl;
-      previewScreen.classList.add("show");
-      liveTopUi.classList.add("hidden");
-      liveBottomUi.classList.add("hidden");
     }
 
     async function capturePhoto() {
@@ -494,7 +587,7 @@
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        drawCoverImage(
+        drawContainImage(
           ctx,
           video,
           canvas.width,
@@ -502,12 +595,14 @@
           CONFIG.mirrorFrontCameraCapture && isFrontCamera()
         );
 
-        drawCoverImage(
+        drawAdjustedOverlayContain(
           ctx,
           overlay,
           canvas.width,
           canvas.height,
-          false
+          overlayState.scale,
+          overlayState.offsetX,
+          overlayState.offsetY
         );
 
         const blob = await new Promise((resolve, reject) => {
@@ -523,8 +618,11 @@
         }
 
         lastBlobUrl = URL.createObjectURL(blob);
-        showPreview(lastBlobUrl);
+        resultImage.src = lastBlobUrl;
+        result.classList.add("show");
         saveBtn.disabled = false;
+
+        result.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (err) {
         console.error(err);
         alert("Erro ao capturar a foto. Verifique se o filtro.png está no mesmo local do index.html.");
@@ -561,9 +659,21 @@
       }, 300);
     }
 
+    function retakePhoto() {
+      result.classList.remove("show");
+      resultImage.removeAttribute("src");
+      saveBtn.disabled = true;
+    }
+
     switchBtn.addEventListener("click", switchCamera);
     captureBtn.addEventListener("click", capturePhoto);
     saveBtn.addEventListener("click", savePhoto);
+    retakeBtn.addEventListener("click", retakePhoto);
+
+    scaleRange.addEventListener("input", syncAdjustmentsFromInputs);
+    offsetXRange.addEventListener("input", syncAdjustmentsFromInputs);
+    offsetYRange.addEventListener("input", syncAdjustmentsFromInputs);
+    resetAdjustBtn.addEventListener("click", resetAdjustments);
 
     window.addEventListener("beforeunload", stopCamera);
 
@@ -572,6 +682,8 @@
     });
 
     window.addEventListener("load", async () => {
+      resetAdjustments();
+
       if (location.protocol === "https:" || location.hostname === "localhost") {
         await startCamera();
       } else {
