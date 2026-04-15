@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+  <title>Wedding Camera Overlay</title>
+  <style>
+    :root {
+      --bg: #0f0f10;
+      --panel: rgba(255, 255, 255, 0.08);
+      --text: #ffffff;
+      --muted: rgba(255, 255, 255, 0.75);
+      --accent: #ffffff;
+      --radius: 18px;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, system-ui, Arial, sans-serif;
+      height: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .app {
+      width: 100%;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      gap: 14px;
+      padding: 14px 14px calc(14px + var(--safe-bottom));
+    }
+
+    .header {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 4px 2px 0;
+    }
+
+    .title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .subtitle {
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .camera-shell {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 54vh;
+      border-radius: 24px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: var(--shadow);
+    }
+
+    .video,
+    .overlay,
+    .capture-flash {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .video {
+      object-fit: cover;
+      background: #000;
+      transform-origin: center center;
+    }
+
+    .video.mirror {
+      transform: scaleX(-1);
+    }
+
+    .overlay {
+      object-fit: cover;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .capture-flash {
+      background: #fff;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 140ms ease;
+    }
+
+    .capture-flash.active {
+      opacity: 0.85;
+    }
+
+    .badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 5;
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(8px);
+      font-size: 0.85rem;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+      padding-top: 4px;
+    }
+
+    .left-actions,
+    .right-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .right-actions {
+      justify-content: flex-end;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 12px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .capture-btn {
+      width: 82px;
+      height: 82px;
+      border-radius: 50%;
+      padding: 0;
+      background: #fff;
+      position: relative;
+      box-shadow: var(--shadow);
+    }
+
+    .capture-btn::after {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      border: 3px solid #111;
+    }
+
+    .secondary {
+      min-width: 92px;
+    }
+
+    .result {
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(255,255,255,0.05);
+      border-radius: var(--radius);
+    }
+
+    .result.show {
+      display: flex;
+    }
+
+    .result img {
+      width: 100%;
+      border-radius: 16px;
+      display: block;
+      background: #111;
+    }
+
+    .hint {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="title">Foto do Casamento</div>
+      <div class="subtitle">Abra, fotografe, salve e poste</div>
+    </header>
+
+    <section class="camera-shell">
+      <div class="badge" id="statusBadge">Câmera desligada</div>
+
+      <video
+        id="video"
+        class="video"
+        autoplay
+        muted
+        playsinline
+      ></video>
+
+      <!-- Troque o src pelo seu PNG transparente -->
+      <img
+        id="overlay"
+        class="overlay"
+        src="./filtro.png"
+        alt="Template do casamento"
+      />
+
+      <div id="flash" class="capture-flash"></div>
+    </section>
+
+    <section class="controls">
+      <div class="left-actions">
+      <button id="captureBtn" class="capture-btn" aria-label="Capturar foto"></button>
+      <div class="right-actions">
+        <button id="downloadBtn" class="secondary" disabled>Salvar</button>
+      </div>
+    </section>
+
+    <section id="result" class="result">
+      <img id="resultImage" alt="Foto capturada" />
+      <div class="hint">
+        Dica: depois de salvar, o convidado pode abrir o Instagram e publicar no Story.
+      </div>
+    </section>
+
+    <canvas id="canvas"></canvas>
+  </main>
+
+  <script>
+    const CONFIG = {
+      templateUrl: "./filtro.png",
+      preferredFacingMode: "user", // "user" ou "environment"
+      mirrorFrontCameraPreview: true,
+      mirrorFrontCameraCapture: true,
+      outputMimeType: "image/jpeg",
+      outputQuality: 0.95,
+      fileNamePrefix: "casamento"
+    };
+
+    const video = document.getElementById("video");
+    const overlay = document.getElementById("overlay");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const startBtn = document.getElementById("startBtn");
+    const switchBtn = document.getElementById("switchBtn");
+    const captureBtn = document.getElementById("captureBtn");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const result = document.getElementById("result");
+    const resultImage = document.getElementById("resultImage");
+    const statusBadge = document.getElementById("statusBadge");
+    const flash = document.getElementById("flash");
+
+    let stream = null;
+    let currentFacingMode = CONFIG.preferredFacingMode;
+    let lastBlobUrl = null;
+
+    overlay.src = CONFIG.templateUrl;
+
+    function setStatus(text) {
+      statusBadge.textContent = text;
+    }
+
+    function isFrontCamera() {
+      return currentFacingMode === "user";
+    }
+
+    function updateVideoMirror() {
+      const mirror = CONFIG.mirrorFrontCameraPreview && isFrontCamera();
+      video.classList.toggle("mirror", mirror);
+    }
+
+    async function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      setStatus("Câmera desligada");
+    }
+
+    async function startCamera() {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("getUserMedia não suportado neste navegador.");
+        }
+
+        await stopCamera();
+
+        const constraints = {
+          audio: false,
+          video: {
+            facingMode: { ideal: currentFacingMode },
+            width: { ideal: 1080 },
+            height: { ideal: 1920 }
+          }
+        };
+
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
+
+        await video.play();
+        updateVideoMirror();
+
+        const track = stream.getVideoTracks()[0];
+        const settings = track.getSettings ? track.getSettings() : {};
+        if (settings.facingMode) {
+          currentFacingMode = settings.facingMode;
+          updateVideoMirror();
+        }
+
+        setStatus(
+          currentFacingMode === "user"
+            ? "Câmera frontal"
+            : "Câmera traseira"
+        );
+      } catch (err) {
+        console.error(err);
+        setStatus("Erro ao abrir câmera");
+        alert(
+          "Não foi possível abrir a câmera.\n\n" +
+          "Verifique:\n" +
+          "- permissão da câmera\n" +
+          "- HTTPS ou localhost\n" +
+          "- navegador compatível"
+        );
+      }
+    }
+
+    async function switchCamera() {
+      currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+      await startCamera();
+    }
+
+    function flashEffect() {
+      flash.classList.add("active");
+      setTimeout(() => flash.classList.remove("active"), 140);
+    }
+
+    function drawCoverImage(ctx, img, destW, destH, mirror = false) {
+      const srcW = img.videoWidth || img.naturalWidth || img.width;
+      const srcH = img.videoHeight || img.naturalHeight || img.height;
+
+      if (!srcW || !srcH) {
+        throw new Error("Imagem/vídeo ainda não está pronto para desenhar.");
+      }
+
+      const srcRatio = srcW / srcH;
+      const destRatio = destW / destH;
+
+      let drawW, drawH, offsetX, offsetY;
+
+      if (srcRatio > destRatio) {
+        drawH = destH;
+        drawW = destH * srcRatio;
+        offsetX = (destW - drawW) / 2;
+        offsetY = 0;
+      } else {
+        drawW = destW;
+        drawH = destW / srcRatio;
+        offsetX = 0;
+        offsetY = (destH - drawH) / 2;
+      }
+
+      if (mirror) {
+        ctx.save();
+        ctx.translate(destW, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+        ctx.restore();
+      } else {
+        ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+      }
+    }
+
+    async function capturePhoto() {
+      try {
+        if (!video.videoWidth || !video.videoHeight) {
+          alert("A câmera ainda não está pronta.");
+          return;
+        }
+
+        flashEffect();
+
+        const outputW = 1080;
+        const outputH = 1920;
+
+        canvas.width = outputW;
+        canvas.height = outputH;
+
+        ctx.clearRect(0, 0, outputW, outputH);
+
+        drawCoverImage(
+          ctx,
+          video,
+          outputW,
+          outputH,
+          CONFIG.mirrorFrontCameraCapture && isFrontCamera()
+        );
+
+        if (overlay.complete && overlay.naturalWidth > 0) {
+          drawCoverImage(ctx, overlay, outputW, outputH, false);
+        }
+
+        const blob = await new Promise((resolve, reject) => {
+          canvas.toBlob(
+            blob => (blob ? resolve(blob) : reject(new Error("Falha ao gerar imagem"))),
+            CONFIG.outputMimeType,
+            CONFIG.outputQuality
+          );
+        });
+
+        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+        lastBlobUrl = URL.createObjectURL(blob);
+
+        resultImage.src = lastBlobUrl;
+        result.classList.add("show");
+        downloadBtn.disabled = false;
+      } catch (err) {
+        console.error(err);
+        alert("Erro ao capturar a foto.");
+      }
+    }
+
+    function buildFileName() {
+      const now = new Date();
+      const pad = n => String(n).padStart(2, "0");
+      return `${CONFIG.fileNamePrefix}-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.jpg`;
+    }
+
+    async function downloadPhoto() {
+      if (!lastBlobUrl) return;
+
+      const a = document.createElement("a");
+      a.href = lastBlobUrl;
+      a.download = buildFileName();
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    startBtn.addEventListener("click", startCamera);
+    switchBtn.addEventListener("click", switchCamera);
+    captureBtn.addEventListener("click", capturePhoto);
+    downloadBtn.addEventListener("click", downloadPhoto);
+
+    window.addEventListener("beforeunload", stopCamera);
+
+    overlay.addEventListener("error", () => {
+      console.warn("Não foi possível carregar o template:", CONFIG.templateUrl);
+    });
+
+    // Opcional: abrir automaticamente ao carregar
+    window.addEventListener("load", async () => {
+      if (location.protocol === "https:" || location.hostname === "localhost") {
+        await startCamera();
+      } else {
+        setStatus("Use HTTPS para ativar a câmera");
+      }
+    });
+  </script>
+</body>
+</html>
