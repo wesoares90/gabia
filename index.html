@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>seu filtro</title>
+  <title>Wedding Camera Overlay</title>
 
   <style>
     :root {
@@ -38,7 +38,7 @@
       width: 100%;
       min-height: 100vh;
       display: grid;
-      grid-template-rows: auto auto auto auto 1fr;
+      grid-template-rows: auto auto auto auto;
       gap: 14px;
       padding: 14px 14px calc(14px + var(--safe-bottom));
       max-width: 480px;
@@ -67,7 +67,6 @@
       position: relative;
       width: 100%;
       aspect-ratio: 9 / 16;
-      max-height: calc(100vh - 320px);
       border-radius: 24px;
       overflow: hidden;
       background: #000;
@@ -85,7 +84,7 @@
     }
 
     .video {
-      object-fit: cover;
+      object-fit: contain;
       background: #000;
       transform-origin: center center;
     }
@@ -100,10 +99,9 @@
     }
 
     .overlay-image {
-      object-fit: cover;
+      object-fit: contain;
       user-select: none;
-      transform-origin: center center;
-      will-change: transform;
+      pointer-events: none;
     }
 
     .capture-flash {
@@ -137,11 +135,15 @@
       padding-top: 4px;
     }
 
+    .left-actions,
     .right-actions {
       display: flex;
-      justify-content: flex-end;
       gap: 10px;
-      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .right-actions {
+      justify-content: flex-end;
     }
 
     button {
@@ -179,54 +181,30 @@
       border: 3px solid #111;
     }
 
-    .adjust-panel,
+    .secondary {
+      min-width: 92px;
+    }
+
     .result {
-      display: grid;
+      display: none;
+      flex-direction: column;
       gap: 10px;
       padding: 12px;
       background: rgba(255,255,255,0.05);
       border-radius: var(--radius);
     }
 
-    .result {
-      display: none;
-    }
-
     .result.show {
-      display: grid;
+      display: flex;
     }
 
     .result img {
       width: 100%;
+      aspect-ratio: 9 / 16;
+      object-fit: contain;
       border-radius: 16px;
       display: block;
       background: #111;
-    }
-
-    .adjust-row {
-      display: grid;
-      grid-template-columns: 92px 1fr 54px;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .adjust-row label {
-      font-size: 0.9rem;
-      color: var(--muted);
-    }
-
-    .adjust-value {
-      font-size: 0.88rem;
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .adjust-actions,
-    .result-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      flex-wrap: wrap;
     }
 
     .hint {
@@ -244,58 +222,41 @@
   <main class="app">
     <header class="header">
       <div class="title">Foto do Casamento</div>
-      <div class="subtitle">Proporção exata de Story: 1080 × 1920</div>
+      <div class="subtitle">Tire a foto e baixe com o filtro aplicado</div>
     </header>
 
     <section class="camera-shell">
       <div class="badge" id="statusBadge">Câmera desligada</div>
+
       <video id="video" class="video" autoplay muted playsinline></video>
 
       <div class="overlay-stage">
-        <img id="overlay" class="overlay-image" src="./filtro.png" alt="Template do casamento" />
+        <img
+          id="overlay"
+          class="overlay-image"
+          src="./filtro.png"
+          alt="Template do casamento"
+        />
       </div>
 
       <div id="flash" class="capture-flash"></div>
     </section>
 
     <section class="controls">
-      <div></div>
+      <div class="left-actions">
+        <button id="switchBtn" class="secondary" type="button">Trocar câmera</button>
+      </div>
+
       <button id="captureBtn" class="capture-btn" aria-label="Capturar foto"></button>
-      <div class="right-actions">
-        <button id="saveBtn" disabled>Salvar</button>
-      </div>
-    </section>
 
-    <section class="adjust-panel">
-      <div class="adjust-row">
-        <label for="scaleRange">Zoom</label>
-        <input id="scaleRange" type="range" min="70" max="140" step="1" value="100" />
-        <div id="scaleValue" class="adjust-value">100%</div>
-      </div>
-
-      <div class="adjust-row">
-        <label for="offsetXRange">Horizontal</label>
-        <input id="offsetXRange" type="range" min="-30" max="30" step="0.5" value="0" />
-        <div id="offsetXValue" class="adjust-value">0%</div>
-      </div>
-
-      <div class="adjust-row">
-        <label for="offsetYRange">Vertical</label>
-        <input id="offsetYRange" type="range" min="-30" max="30" step="0.5" value="0" />
-        <div id="offsetYValue" class="adjust-value">0%</div>
-      </div>
-
-      <div class="adjust-actions">
-        <button id="resetAdjustBtn" type="button">Resetar filtro</button>
-      </div>
+      <div class="right-actions"></div>
     </section>
 
     <section id="result" class="result">
       <img id="resultImage" alt="Foto capturada com filtro" />
-      <div class="hint">A prévia e a exportação estão na proporção exata de Story.</div>
-      <div class="result-actions">
-        <button id="saveResultBtn" disabled>Baixar foto</button>
-        <button id="instagramBtn" disabled>Instagram</button>
+      <button id="saveBtn" class="secondary" disabled>Baixar</button>
+      <div class="hint">
+        No iPhone, se o download não começar automaticamente, a imagem pode abrir em outra aba para salvar manualmente.
       </div>
     </section>
 
@@ -320,35 +281,19 @@
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
+    const switchBtn = document.getElementById("switchBtn");
     const captureBtn = document.getElementById("captureBtn");
     const saveBtn = document.getElementById("saveBtn");
-    const saveResultBtn = document.getElementById("saveResultBtn");
-    const instagramBtn = document.getElementById("instagramBtn");
-    const resetAdjustBtn = document.getElementById("resetAdjustBtn");
 
     const result = document.getElementById("result");
     const resultImage = document.getElementById("resultImage");
     const statusBadge = document.getElementById("statusBadge");
     const flash = document.getElementById("flash");
 
-    const scaleRange = document.getElementById("scaleRange");
-    const offsetXRange = document.getElementById("offsetXRange");
-    const offsetYRange = document.getElementById("offsetYRange");
-
-    const scaleValue = document.getElementById("scaleValue");
-    const offsetXValue = document.getElementById("offsetXValue");
-    const offsetYValue = document.getElementById("offsetYValue");
-
     let stream = null;
     let currentFacingMode = CONFIG.preferredFacingMode;
     let lastBlob = null;
     let lastBlobUrl = null;
-
-    const overlayState = {
-      scale: 1,
-      offsetX: 0,
-      offsetY: 0
-    };
 
     overlay.src = CONFIG.templateUrl;
 
@@ -361,30 +306,8 @@
     }
 
     function updateVideoMirror() {
-      video.classList.toggle("mirror", CONFIG.mirrorFrontCameraPreview && isFrontCamera());
-    }
-
-    function updateOverlayPreview() {
-      overlay.style.transform =
-        `translate(${overlayState.offsetX}%, ${overlayState.offsetY}%) scale(${overlayState.scale})`;
-
-      scaleValue.textContent = `${Math.round(overlayState.scale * 100)}%`;
-      offsetXValue.textContent = `${overlayState.offsetX.toFixed(1)}%`;
-      offsetYValue.textContent = `${overlayState.offsetY.toFixed(1)}%`;
-    }
-
-    function syncAdjustmentsFromInputs() {
-      overlayState.scale = Number(scaleRange.value) / 100;
-      overlayState.offsetX = Number(offsetXRange.value);
-      overlayState.offsetY = Number(offsetYRange.value);
-      updateOverlayPreview();
-    }
-
-    function resetAdjustments() {
-      scaleRange.value = 100;
-      offsetXRange.value = 0;
-      offsetYRange.value = 0;
-      syncAdjustmentsFromInputs();
+      const mirror = CONFIG.mirrorFrontCameraPreview && isFrontCamera();
+      video.classList.toggle("mirror", mirror);
     }
 
     async function stopCamera() {
@@ -398,6 +321,10 @@
 
     async function startCamera() {
       try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("getUserMedia não suportado neste navegador.");
+        }
+
         await stopCamera();
 
         try {
@@ -409,7 +336,7 @@
               height: { ideal: 1920 }
             }
           });
-        } catch {
+        } catch (e) {
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
             video: true
@@ -421,15 +348,33 @@
 
         const track = stream.getVideoTracks()[0];
         const settings = track.getSettings ? track.getSettings() : {};
-        if (settings.facingMode) currentFacingMode = settings.facingMode;
+        if (settings.facingMode) {
+          currentFacingMode = settings.facingMode;
+        }
 
         updateVideoMirror();
-        setStatus(currentFacingMode === "user" ? "Câmera frontal" : "Câmera traseira");
+
+        setStatus(
+          currentFacingMode === "user"
+            ? "Câmera frontal"
+            : "Câmera traseira"
+        );
       } catch (err) {
         console.error(err);
         setStatus("Erro ao abrir câmera");
-        alert("Não foi possível abrir a câmera. Verifique permissão, HTTPS e compatibilidade.");
+        alert(
+          "Não foi possível abrir a câmera.\n\n" +
+          "Verifique:\n" +
+          "- permissão da câmera\n" +
+          "- HTTPS ou localhost\n" +
+          "- navegador compatível"
+        );
       }
+    }
+
+    async function switchCamera() {
+      currentFacingMode = currentFacingMode === "user" ? "environment" : "user";
+      await startCamera();
     }
 
     function flashEffect() {
@@ -437,9 +382,13 @@
       setTimeout(() => flash.classList.remove("active"), 140);
     }
 
-    function drawCoverImage(ctx, img, destW, destH, mirror = false) {
+    function drawContainImage(ctx, img, destW, destH, mirror = false) {
       const srcW = img.videoWidth || img.naturalWidth || img.width;
       const srcH = img.videoHeight || img.naturalHeight || img.height;
+
+      if (!srcW || !srcH) {
+        throw new Error("Imagem/vídeo ainda não está pronto para desenhar.");
+      }
 
       const srcRatio = srcW / srcH;
       const destRatio = destW / destH;
@@ -447,15 +396,15 @@
       let drawW, drawH, offsetX, offsetY;
 
       if (srcRatio > destRatio) {
-        drawH = destH;
-        drawW = destH * srcRatio;
-        offsetX = (destW - drawW) / 2;
-        offsetY = 0;
-      } else {
         drawW = destW;
         drawH = destW / srcRatio;
         offsetX = 0;
         offsetY = (destH - drawH) / 2;
+      } else {
+        drawH = destH;
+        drawW = destH * srcRatio;
+        offsetX = (destW - drawW) / 2;
+        offsetY = 0;
       }
 
       if (mirror) {
@@ -469,36 +418,11 @@
       }
     }
 
-    function drawAdjustedOverlay(ctx, img, destW, destH, scale, offsetXPercent, offsetYPercent) {
-      const srcW = img.naturalWidth || img.width;
-      const srcH = img.naturalHeight || img.height;
-
-      const srcRatio = srcW / srcH;
-      const destRatio = destW / destH;
-
-      let baseW, baseH;
-
-      if (srcRatio > destRatio) {
-        baseH = destH;
-        baseW = destH * srcRatio;
-      } else {
-        baseW = destW;
-        baseH = destW / srcRatio;
-      }
-
-      const drawW = baseW * scale;
-      const drawH = baseH * scale;
-
-      const x = (destW - drawW) / 2 + (destW * offsetXPercent / 100);
-      const y = (destH - drawH) / 2 + (destH * offsetYPercent / 100);
-
-      ctx.drawImage(img, x, y, drawW, drawH);
-    }
-
     async function ensureOverlayLoaded() {
       if (overlay.complete && overlay.naturalWidth > 0) return;
+
       await new Promise((resolve, reject) => {
-        overlay.onload = resolve;
+        overlay.onload = () => resolve();
         overlay.onerror = () => reject(new Error("Falha ao carregar filtro.png"));
       });
     }
@@ -513,32 +437,27 @@
         await ensureOverlayLoaded();
         flashEffect();
 
-        canvas.width = CONFIG.outputWidth;
-        canvas.height = CONFIG.outputHeight;
+        const outputW = CONFIG.outputWidth;
+        const outputH = CONFIG.outputHeight;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        canvas.width = outputW;
+        canvas.height = outputH;
 
-        drawCoverImage(
+        ctx.clearRect(0, 0, outputW, outputH);
+
+        drawContainImage(
           ctx,
           video,
-          canvas.width,
-          canvas.height,
+          outputW,
+          outputH,
           CONFIG.mirrorFrontCameraCapture && isFrontCamera()
         );
 
-        drawAdjustedOverlay(
-          ctx,
-          overlay,
-          canvas.width,
-          canvas.height,
-          overlayState.scale,
-          overlayState.offsetX,
-          overlayState.offsetY
-        );
+        drawContainImage(ctx, overlay, outputW, outputH, false);
 
         const blob = await new Promise((resolve, reject) => {
           canvas.toBlob(
-            b => b ? resolve(b) : reject(new Error("Falha ao gerar imagem")),
+            blob => (blob ? resolve(blob) : reject(new Error("Falha ao gerar imagem"))),
             CONFIG.outputMimeType,
             CONFIG.outputQuality
           );
@@ -551,27 +470,27 @@
 
         resultImage.src = lastBlobUrl;
         result.classList.add("show");
-
         saveBtn.disabled = false;
-        saveResultBtn.disabled = false;
-        instagramBtn.disabled = false;
+
+        result.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (err) {
         console.error(err);
-        alert("Erro ao capturar a foto.");
+        alert("Erro ao capturar a foto. Verifique se o filtro.png está no mesmo local do index.html.");
       }
     }
 
     function buildFileName() {
       const now = new Date();
       const pad = n => String(n).padStart(2, "0");
-      return `casamento-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.jpg`;
+      return `${CONFIG.fileNamePrefix}-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.jpg`;
     }
 
     function openFallback() {
-      if (lastBlobUrl) window.open(lastBlobUrl, "_blank");
+      if (!lastBlobUrl) return;
+      window.open(lastBlobUrl, "_blank");
     }
 
-    async function savePhoto() {
+    function savePhoto() {
       if (!lastBlobUrl) return;
 
       try {
@@ -582,47 +501,25 @@
         a.click();
         a.remove();
       } catch (err) {
-        console.warn(err);
+        console.warn("Download direto falhou:", err);
       }
 
-      setTimeout(openFallback, 300);
+      setTimeout(() => {
+        openFallback();
+      }, 300);
     }
 
-    async function shareToInstagram() {
-      if (!lastBlob) return;
-
-      const file = new File([lastBlob], buildFileName(), { type: CONFIG.outputMimeType });
-
-      try {
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: "Foto do casamento"
-          });
-          return;
-        }
-      } catch (err) {
-        console.warn(err);
-      }
-
-      openFallback();
-    }
-
+    switchBtn.addEventListener("click", switchCamera);
     captureBtn.addEventListener("click", capturePhoto);
     saveBtn.addEventListener("click", savePhoto);
-    saveResultBtn.addEventListener("click", savePhoto);
-    instagramBtn.addEventListener("click", shareToInstagram);
-    resetAdjustBtn.addEventListener("click", resetAdjustments);
-
-    scaleRange.addEventListener("input", syncAdjustmentsFromInputs);
-    offsetXRange.addEventListener("input", syncAdjustmentsFromInputs);
-    offsetYRange.addEventListener("input", syncAdjustmentsFromInputs);
 
     window.addEventListener("beforeunload", stopCamera);
 
-    window.addEventListener("load", async () => {
-      resetAdjustments();
+    overlay.addEventListener("error", () => {
+      console.warn("Não foi possível carregar o template:", CONFIG.templateUrl);
+    });
 
+    window.addEventListener("load", async () => {
       if (location.protocol === "https:" || location.hostname === "localhost") {
         await startCamera();
       } else {
