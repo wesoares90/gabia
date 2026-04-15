@@ -84,9 +84,10 @@
     }
 
     .video {
-      object-fit: contain;
+      object-fit: cover;
       background: #000;
       transform-origin: center center;
+      display: block;
     }
 
     .video.mirror {
@@ -99,11 +100,12 @@
     }
 
     .overlay-image {
-      object-fit: contain;
+      object-fit: cover;
       pointer-events: none;
       user-select: none;
       transform-origin: center center;
       will-change: transform;
+      display: block;
     }
 
     .capture-flash {
@@ -111,6 +113,7 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 140ms ease;
+      z-index: 4;
     }
 
     .capture-flash.active {
@@ -242,7 +245,7 @@
     .result img {
       width: 100%;
       aspect-ratio: 9 / 16;
-      object-fit: contain;
+      object-fit: cover;
       border-radius: 16px;
       display: block;
       background: #111;
@@ -302,20 +305,20 @@
     <section class="adjust-panel">
       <div class="adjust-row">
         <label for="scaleRange">Zoom filtro</label>
-        <input id="scaleRange" type="range" min="70" max="140" step="1" value="100" />
+        <input id="scaleRange" type="range" min="85" max="125" step="1" value="100" />
         <div id="scaleValue" class="adjust-value">100%</div>
       </div>
 
       <div class="adjust-row">
         <label for="offsetXRange">Horizontal</label>
-        <input id="offsetXRange" type="range" min="-30" max="30" step="0.5" value="0" />
-        <div id="offsetXValue" class="adjust-value">0%</div>
+        <input id="offsetXRange" type="range" min="-20" max="20" step="0.5" value="0" />
+        <div id="offsetXValue" class="adjust-value">0.0%</div>
       </div>
 
       <div class="adjust-row">
         <label for="offsetYRange">Vertical</label>
-        <input id="offsetYRange" type="range" min="-30" max="30" step="0.5" value="0" />
-        <div id="offsetYValue" class="adjust-value">0%</div>
+        <input id="offsetYRange" type="range" min="-20" max="20" step="0.5" value="0" />
+        <div id="offsetYValue" class="adjust-value">0.0%</div>
       </div>
 
       <div class="adjust-actions">
@@ -332,7 +335,7 @@
       </div>
 
       <div class="hint">
-        Se no iPhone o download não iniciar sozinho, a imagem abre em outra aba para salvar manualmente.
+        O enquadramento da foto final segue exatamente a mesma lógica visual da prévia.
       </div>
     </section>
 
@@ -450,7 +453,7 @@
               height: { ideal: 1920 }
             }
           });
-        } catch (e) {
+        } catch {
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
             video: true
@@ -458,6 +461,11 @@
         }
 
         video.srcObject = stream;
+
+        await new Promise((resolve) => {
+          video.onloadedmetadata = () => resolve();
+        });
+
         await video.play();
 
         const track = stream.getVideoTracks()[0];
@@ -497,12 +505,12 @@
       setTimeout(() => flash.classList.remove("active"), 140);
     }
 
-    function drawContainImage(ctx, img, destW, destH, mirror = false) {
+    function drawCoverImage(ctx, img, destW, destH, mirror = false) {
       const srcW = img.videoWidth || img.naturalWidth || img.width;
       const srcH = img.videoHeight || img.naturalHeight || img.height;
 
       if (!srcW || !srcH) {
-        throw new Error("Imagem/vídeo ainda não está pronto para desenhar.");
+        throw new Error("Imagem/vídeo ainda não está pronta para desenhar.");
       }
 
       const srcRatio = srcW / srcH;
@@ -511,15 +519,15 @@
       let drawW, drawH, offsetX, offsetY;
 
       if (srcRatio > destRatio) {
-        drawW = destW;
-        drawH = destW / srcRatio;
-        offsetX = 0;
-        offsetY = (destH - drawH) / 2;
-      } else {
         drawH = destH;
         drawW = destH * srcRatio;
         offsetX = (destW - drawW) / 2;
         offsetY = 0;
+      } else {
+        drawW = destW;
+        drawH = destW / srcRatio;
+        offsetX = 0;
+        offsetY = (destH - drawH) / 2;
       }
 
       if (mirror) {
@@ -533,7 +541,7 @@
       }
     }
 
-    function drawAdjustedOverlayContain(ctx, img, destW, destH, scale, offsetXPercent, offsetYPercent) {
+    function drawAdjustedOverlayCover(ctx, img, destW, destH, scale, offsetXPercent, offsetYPercent) {
       const srcW = img.naturalWidth || img.width;
       const srcH = img.naturalHeight || img.height;
 
@@ -547,11 +555,11 @@
       let baseW, baseH;
 
       if (srcRatio > destRatio) {
-        baseW = destW;
-        baseH = destW / srcRatio;
-      } else {
         baseH = destH;
         baseW = destH * srcRatio;
+      } else {
+        baseW = destW;
+        baseH = destW / srcRatio;
       }
 
       const drawW = baseW * scale;
@@ -587,7 +595,7 @@
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        drawContainImage(
+        drawCoverImage(
           ctx,
           video,
           canvas.width,
@@ -595,7 +603,7 @@
           CONFIG.mirrorFrontCameraCapture && isFrontCamera()
         );
 
-        drawAdjustedOverlayContain(
+        drawAdjustedOverlayCover(
           ctx,
           overlay,
           canvas.width,
