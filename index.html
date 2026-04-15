@@ -84,7 +84,7 @@
     }
 
     .video {
-      object-fit: cover;
+      object-fit: contain;
       background: #000;
       transform-origin: center center;
       display: block;
@@ -100,7 +100,7 @@
     }
 
     .overlay-image {
-      object-fit: cover;
+      object-fit: contain;
       pointer-events: none;
       user-select: none;
       transform-origin: center center;
@@ -245,7 +245,7 @@
     .result img {
       width: 100%;
       aspect-ratio: 9 / 16;
-      object-fit: cover;
+      object-fit: contain;
       border-radius: 16px;
       display: block;
       background: #111;
@@ -266,7 +266,7 @@
   <main class="app">
     <header class="header">
       <div class="title">Foto do Casamento</div>
-      <div class="subtitle">Ajuste o filtro, tire a foto e baixe</div>
+      <div class="subtitle">Sem zoom na câmera, com ajuste do filtro</div>
     </header>
 
     <section class="camera-shell">
@@ -305,19 +305,19 @@
     <section class="adjust-panel">
       <div class="adjust-row">
         <label for="scaleRange">Zoom filtro</label>
-        <input id="scaleRange" type="range" min="85" max="125" step="1" value="100" />
+        <input id="scaleRange" type="range" min="70" max="140" step="1" value="100" />
         <div id="scaleValue" class="adjust-value">100%</div>
       </div>
 
       <div class="adjust-row">
         <label for="offsetXRange">Horizontal</label>
-        <input id="offsetXRange" type="range" min="-20" max="20" step="0.5" value="0" />
+        <input id="offsetXRange" type="range" min="-30" max="30" step="0.5" value="0" />
         <div id="offsetXValue" class="adjust-value">0.0%</div>
       </div>
 
       <div class="adjust-row">
         <label for="offsetYRange">Vertical</label>
-        <input id="offsetYRange" type="range" min="-20" max="20" step="0.5" value="0" />
+        <input id="offsetYRange" type="range" min="-30" max="30" step="0.5" value="0" />
         <div id="offsetYValue" class="adjust-value">0.0%</div>
       </div>
 
@@ -335,7 +335,7 @@
       </div>
 
       <div class="hint">
-        O enquadramento da foto final segue exatamente a mesma lógica visual da prévia.
+        A prévia e a foto final usam a mesma lógica sem zoom. Se no iPhone o download não iniciar sozinho, a imagem pode abrir em outra aba para salvar manualmente.
       </div>
     </section>
 
@@ -453,7 +453,7 @@
               height: { ideal: 1920 }
             }
           });
-        } catch {
+        } catch (e) {
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
             video: true
@@ -463,19 +463,23 @@
         video.srcObject = stream;
 
         await new Promise((resolve) => {
-          video.onloadedmetadata = () => resolve();
+          if (video.readyState >= 1) {
+            resolve();
+          } else {
+            video.onloadedmetadata = () => resolve();
+          }
         });
 
         await video.play();
+        updateVideoMirror();
 
         const track = stream.getVideoTracks()[0];
         const settings = track.getSettings ? track.getSettings() : {};
 
         if (settings.facingMode) {
           currentFacingMode = settings.facingMode;
+          updateVideoMirror();
         }
-
-        updateVideoMirror();
 
         setStatus(
           currentFacingMode === "user"
@@ -505,12 +509,12 @@
       setTimeout(() => flash.classList.remove("active"), 140);
     }
 
-    function drawCoverImage(ctx, img, destW, destH, mirror = false) {
+    function drawContainImage(ctx, img, destW, destH, mirror = false) {
       const srcW = img.videoWidth || img.naturalWidth || img.width;
       const srcH = img.videoHeight || img.naturalHeight || img.height;
 
       if (!srcW || !srcH) {
-        throw new Error("Imagem/vídeo ainda não está pronta para desenhar.");
+        throw new Error("Imagem/vídeo ainda não está pronto para desenhar.");
       }
 
       const srcRatio = srcW / srcH;
@@ -519,15 +523,15 @@
       let drawW, drawH, offsetX, offsetY;
 
       if (srcRatio > destRatio) {
-        drawH = destH;
-        drawW = destH * srcRatio;
-        offsetX = (destW - drawW) / 2;
-        offsetY = 0;
-      } else {
         drawW = destW;
         drawH = destW / srcRatio;
         offsetX = 0;
         offsetY = (destH - drawH) / 2;
+      } else {
+        drawH = destH;
+        drawW = destH * srcRatio;
+        offsetX = (destW - drawW) / 2;
+        offsetY = 0;
       }
 
       if (mirror) {
@@ -541,7 +545,7 @@
       }
     }
 
-    function drawAdjustedOverlayCover(ctx, img, destW, destH, scale, offsetXPercent, offsetYPercent) {
+    function drawAdjustedOverlayContain(ctx, img, destW, destH, scale, offsetXPercent, offsetYPercent) {
       const srcW = img.naturalWidth || img.width;
       const srcH = img.naturalHeight || img.height;
 
@@ -555,11 +559,11 @@
       let baseW, baseH;
 
       if (srcRatio > destRatio) {
-        baseH = destH;
-        baseW = destH * srcRatio;
-      } else {
         baseW = destW;
         baseH = destW / srcRatio;
+      } else {
+        baseH = destH;
+        baseW = destH * srcRatio;
       }
 
       const drawW = baseW * scale;
@@ -595,7 +599,7 @@
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        drawCoverImage(
+        drawContainImage(
           ctx,
           video,
           canvas.width,
@@ -603,7 +607,7 @@
           CONFIG.mirrorFrontCameraCapture && isFrontCamera()
         );
 
-        drawAdjustedOverlayCover(
+        drawAdjustedOverlayContain(
           ctx,
           overlay,
           canvas.width,
@@ -615,7 +619,7 @@
 
         const blob = await new Promise((resolve, reject) => {
           canvas.toBlob(
-            b => b ? resolve(b) : reject(new Error("Falha ao gerar imagem")),
+            (b) => (b ? resolve(b) : reject(new Error("Falha ao gerar imagem"))),
             CONFIG.outputMimeType,
             CONFIG.outputQuality
           );
@@ -639,7 +643,7 @@
 
     function buildFileName() {
       const now = new Date();
-      const pad = n => String(n).padStart(2, "0");
+      const pad = (n) => String(n).padStart(2, "0");
       return `${CONFIG.fileNamePrefix}-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.jpg`;
     }
 
