@@ -7,13 +7,15 @@
 
   <style>
     :root {
-      --bg: #0f0f10;
-      --panel: rgba(255, 255, 255, 0.08);
+      --bg: #000000;
+      --panel: rgba(255, 255, 255, 0.14);
       --text: #ffffff;
-      --muted: rgba(255, 255, 255, 0.75);
-      --radius: 18px;
+      --muted: rgba(255, 255, 255, 0.8);
       --shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
     }
 
     * {
@@ -24,68 +26,50 @@
     html, body {
       margin: 0;
       padding: 0;
-      background: var(--bg);
-      color: var(--text);
+      width: 100%;
+      height: 100%;
+      background: #000;
+      overflow: hidden;
       font-family: Inter, system-ui, Arial, sans-serif;
-      min-height: 100%;
     }
 
     body {
-      min-height: 100vh;
+      color: var(--text);
     }
 
     .app {
-      width: 100%;
-      min-height: 100vh;
-      display: grid;
-      grid-template-rows: auto auto auto auto;
-      gap: 14px;
-      padding: 14px 14px calc(14px + var(--safe-bottom));
-      max-width: 480px;
-      margin: 0 auto;
-    }
-
-    .header {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 4px 2px 0;
-    }
-
-    .title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-    }
-
-    .subtitle {
-      font-size: 0.92rem;
-      color: var(--muted);
-    }
-
-    .camera-shell {
       position: relative;
-      width: 100%;
-      aspect-ratio: 9 / 16;
-      border-radius: 24px;
-      overflow: hidden;
+      width: 100vw;
+      height: 100dvh;
       background: #000;
-      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .stage {
+      position: absolute;
+      inset: 0;
+      background: #000;
+      overflow: hidden;
     }
 
     .video,
-    .capture-flash,
-    .overlay-stage,
-    .overlay-image {
+    .overlay,
+    .preview-image,
+    .capture-flash {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
     }
 
-    .video {
-      object-fit: contain;
+    .video,
+    .overlay,
+    .preview-image {
+      object-fit: cover;
       background: #000;
+    }
+
+    .video {
       transform-origin: center center;
     }
 
@@ -93,15 +77,9 @@
       transform: scaleX(-1);
     }
 
-    .overlay-stage {
+    .overlay {
       pointer-events: none;
-      overflow: hidden;
-    }
-
-    .overlay-image {
-      object-fit: contain;
       user-select: none;
-      pointer-events: none;
     }
 
     .capture-flash {
@@ -109,41 +87,85 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 140ms ease;
+      z-index: 6;
     }
 
     .capture-flash.active {
       opacity: 0.85;
     }
 
-    .badge {
+    .top-ui {
       position: absolute;
-      top: 12px;
-      left: 12px;
-      z-index: 5;
-      padding: 8px 10px;
-      border-radius: 999px;
-      background: rgba(0, 0, 0, 0.45);
-      backdrop-filter: blur(8px);
-      font-size: 0.85rem;
-    }
-
-    .controls {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      gap: 12px;
-      padding-top: 4px;
-    }
-
-    .left-actions,
-    .right-actions {
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
       display: flex;
-      gap: 10px;
-      align-items: center;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding:
+        calc(14px + var(--safe-top))
+        calc(14px + var(--safe-right))
+        14px
+        calc(14px + var(--safe-left));
+      pointer-events: none;
     }
 
-    .right-actions {
-      justify-content: flex-end;
+    .header-card,
+    .badge {
+      pointer-events: auto;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .header-card {
+      padding: 12px 14px;
+      max-width: min(78vw, 340px);
+    }
+
+    .title {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 4px;
+    }
+
+    .subtitle {
+      font-size: 0.84rem;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+
+    .badge {
+      padding: 10px 12px;
+      font-size: 0.84rem;
+      white-space: nowrap;
+      margin-left: 12px;
+    }
+
+    .bottom-ui {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 10;
+      padding:
+        14px
+        calc(14px + var(--safe-right))
+        calc(20px + var(--safe-bottom))
+        calc(14px + var(--safe-left));
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      pointer-events: none;
+    }
+
+    .bottom-ui > * {
+      pointer-events: auto;
     }
 
     button {
@@ -156,6 +178,7 @@
       font-weight: 600;
       cursor: pointer;
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
 
     button:disabled {
@@ -164,13 +187,14 @@
     }
 
     .capture-btn {
-      width: 82px;
-      height: 82px;
+      width: 86px;
+      height: 86px;
       border-radius: 50%;
       padding: 0;
       background: #fff;
       position: relative;
       box-shadow: var(--shadow);
+      flex: 0 0 auto;
     }
 
     .capture-btn::after {
@@ -182,35 +206,54 @@
     }
 
     .secondary {
-      min-width: 92px;
+      min-width: 120px;
     }
 
-    .result {
+    .preview-screen {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      background: #000;
       display: none;
-      flex-direction: column;
-      gap: 10px;
-      padding: 12px;
-      background: rgba(255,255,255,0.05);
-      border-radius: var(--radius);
     }
 
-    .result.show {
-      display: flex;
-    }
-
-    .result img {
-      width: 100%;
-      aspect-ratio: 9 / 16;
-      object-fit: contain;
-      border-radius: 16px;
+    .preview-screen.show {
       display: block;
-      background: #111;
     }
 
-    .hint {
-      font-size: 0.88rem;
-      color: var(--muted);
-      line-height: 1.4;
+    .preview-top {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 22;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding:
+        calc(14px + var(--safe-top))
+        calc(14px + var(--safe-right))
+        14px
+        calc(14px + var(--safe-left));
+    }
+
+    .preview-bottom {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 22;
+      display: flex;
+      justify-content: center;
+      padding:
+        14px
+        calc(14px + var(--safe-right))
+        calc(20px + var(--safe-bottom))
+        calc(14px + var(--safe-left));
+    }
+
+    .hidden {
+      display: none !important;
     }
 
     canvas {
@@ -220,43 +263,43 @@
 </head>
 <body>
   <main class="app">
-    <header class="header">
-      <div class="title">Foto do Casamento</div>
-      <div class="subtitle">Tire a foto e baixe com o filtro aplicado</div>
-    </header>
-
-    <section class="camera-shell">
-      <div class="badge" id="statusBadge">Câmera desligada</div>
-
+    <section class="stage">
       <video id="video" class="video" autoplay muted playsinline></video>
 
-      <div class="overlay-stage">
-        <img
-          id="overlay"
-          class="overlay-image"
-          src="./filtro.png"
-          alt="Template do casamento"
-        />
-      </div>
+      <img
+        id="overlay"
+        class="overlay"
+        src="./filtro.png"
+        alt="Filtro do casamento"
+      />
 
       <div id="flash" class="capture-flash"></div>
     </section>
 
-    <section class="controls">
-      <div class="left-actions">
-        <button id="switchBtn" class="secondary" type="button">Trocar câmera</button>
+    <section class="top-ui" id="liveTopUi">
+      <div class="header-card">
+        <div class="title">Foto do Casamento</div>
+        <div class="subtitle">Enquadramento em tela cheia no padrão Story</div>
       </div>
 
-      <button id="captureBtn" class="capture-btn" aria-label="Capturar foto"></button>
-
-      <div class="right-actions"></div>
+      <div class="badge" id="statusBadge">Câmera desligada</div>
     </section>
 
-    <section id="result" class="result">
-      <img id="resultImage" alt="Foto capturada com filtro" />
-      <button id="saveBtn" class="secondary" disabled>Baixar</button>
-      <div class="hint">
-        No iPhone, se o download não começar automaticamente, a imagem pode abrir em outra aba para salvar manualmente.
+    <section class="bottom-ui" id="liveBottomUi">
+      <button id="switchBtn" class="secondary" type="button">Trocar câmera</button>
+      <button id="captureBtn" class="capture-btn" aria-label="Capturar foto"></button>
+      <div style="width:120px;"></div>
+    </section>
+
+    <section id="previewScreen" class="preview-screen">
+      <img id="previewImage" class="preview-image" alt="Foto final com filtro" />
+
+      <div class="preview-top">
+        <div class="badge">Foto tirada</div>
+      </div>
+
+      <div class="preview-bottom">
+        <button id="saveBtn" class="secondary" disabled>Baixar</button>
       </div>
     </section>
 
@@ -278,21 +321,22 @@
 
     const video = document.getElementById("video");
     const overlay = document.getElementById("overlay");
+    const flash = document.getElementById("flash");
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
+    const statusBadge = document.getElementById("statusBadge");
     const switchBtn = document.getElementById("switchBtn");
     const captureBtn = document.getElementById("captureBtn");
     const saveBtn = document.getElementById("saveBtn");
 
-    const result = document.getElementById("result");
-    const resultImage = document.getElementById("resultImage");
-    const statusBadge = document.getElementById("statusBadge");
-    const flash = document.getElementById("flash");
+    const previewScreen = document.getElementById("previewScreen");
+    const previewImage = document.getElementById("previewImage");
+    const liveTopUi = document.getElementById("liveTopUi");
+    const liveBottomUi = document.getElementById("liveBottomUi");
 
     let stream = null;
     let currentFacingMode = CONFIG.preferredFacingMode;
-    let lastBlob = null;
     let lastBlobUrl = null;
 
     overlay.src = CONFIG.templateUrl;
@@ -306,8 +350,8 @@
     }
 
     function updateVideoMirror() {
-      const mirror = CONFIG.mirrorFrontCameraPreview && isFrontCamera();
-      video.classList.toggle("mirror", mirror);
+      const shouldMirror = CONFIG.mirrorFrontCameraPreview && isFrontCamera();
+      video.classList.toggle("mirror", shouldMirror);
     }
 
     async function stopCamera() {
@@ -336,7 +380,7 @@
               height: { ideal: 1920 }
             }
           });
-        } catch (e) {
+        } catch (err) {
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
             video: true
@@ -348,6 +392,7 @@
 
         const track = stream.getVideoTracks()[0];
         const settings = track.getSettings ? track.getSettings() : {};
+
         if (settings.facingMode) {
           currentFacingMode = settings.facingMode;
         }
@@ -382,12 +427,12 @@
       setTimeout(() => flash.classList.remove("active"), 140);
     }
 
-    function drawContainImage(ctx, img, destW, destH, mirror = false) {
+    function drawCoverImage(ctx, img, destW, destH, mirror = false) {
       const srcW = img.videoWidth || img.naturalWidth || img.width;
       const srcH = img.videoHeight || img.naturalHeight || img.height;
 
       if (!srcW || !srcH) {
-        throw new Error("Imagem/vídeo ainda não está pronto para desenhar.");
+        throw new Error("Imagem/vídeo ainda não está pronta para desenhar.");
       }
 
       const srcRatio = srcW / srcH;
@@ -396,15 +441,15 @@
       let drawW, drawH, offsetX, offsetY;
 
       if (srcRatio > destRatio) {
-        drawW = destW;
-        drawH = destW / srcRatio;
-        offsetX = 0;
-        offsetY = (destH - drawH) / 2;
-      } else {
         drawH = destH;
         drawW = destH * srcRatio;
         offsetX = (destW - drawW) / 2;
         offsetY = 0;
+      } else {
+        drawW = destW;
+        drawH = destW / srcRatio;
+        offsetX = 0;
+        offsetY = (destH - drawH) / 2;
       }
 
       if (mirror) {
@@ -427,6 +472,13 @@
       });
     }
 
+    function showPreview(blobUrl) {
+      previewImage.src = blobUrl;
+      previewScreen.classList.add("show");
+      liveTopUi.classList.add("hidden");
+      liveBottomUi.classList.add("hidden");
+    }
+
     async function capturePhoto() {
       try {
         if (!video.videoWidth || !video.videoHeight) {
@@ -437,42 +489,42 @@
         await ensureOverlayLoaded();
         flashEffect();
 
-        const outputW = CONFIG.outputWidth;
-        const outputH = CONFIG.outputHeight;
+        canvas.width = CONFIG.outputWidth;
+        canvas.height = CONFIG.outputHeight;
 
-        canvas.width = outputW;
-        canvas.height = outputH;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        ctx.clearRect(0, 0, outputW, outputH);
-
-        drawContainImage(
+        drawCoverImage(
           ctx,
           video,
-          outputW,
-          outputH,
+          canvas.width,
+          canvas.height,
           CONFIG.mirrorFrontCameraCapture && isFrontCamera()
         );
 
-        drawContainImage(ctx, overlay, outputW, outputH, false);
+        drawCoverImage(
+          ctx,
+          overlay,
+          canvas.width,
+          canvas.height,
+          false
+        );
 
         const blob = await new Promise((resolve, reject) => {
           canvas.toBlob(
-            blob => (blob ? resolve(blob) : reject(new Error("Falha ao gerar imagem"))),
+            b => b ? resolve(b) : reject(new Error("Falha ao gerar imagem")),
             CONFIG.outputMimeType,
             CONFIG.outputQuality
           );
         });
 
-        lastBlob = blob;
+        if (lastBlobUrl) {
+          URL.revokeObjectURL(lastBlobUrl);
+        }
 
-        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
         lastBlobUrl = URL.createObjectURL(blob);
-
-        resultImage.src = lastBlobUrl;
-        result.classList.add("show");
+        showPreview(lastBlobUrl);
         saveBtn.disabled = false;
-
-        result.scrollIntoView({ behavior: "smooth", block: "start" });
       } catch (err) {
         console.error(err);
         alert("Erro ao capturar a foto. Verifique se o filtro.png está no mesmo local do index.html.");
